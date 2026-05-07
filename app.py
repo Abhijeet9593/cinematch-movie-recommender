@@ -1,72 +1,128 @@
 import streamlit as st
-    st.image(
-        "https://cdn-icons-png.flaticon.com/512/4221/4221484.png",
-        width=120,
-    )
+import pandas as pd
+import pickle
+from sklearn.metrics.pairwise import linear_kernel
 
-    st.header("⚡ About App")
-    st.write(
-        "This movie recommendation system uses **TF-IDF** and **Cosine Similarity** to recommend movies based on content."
-    )
 
-    st.markdown("---")
-    st.write("👨‍💻 Built with Streamlit")
-    st.write("⭐ Deploy on Streamlit Cloud")
-
-# =========================
-# MOVIE SELECTOR
-# =========================
-movie_list = movies["title"].sort_values().unique()
-
-selected_movie = st.selectbox(
-    "🎥 Select Your Favorite Movie",
-    movie_list,
+# ==========================
+# PAGE CONFIG
+# ==========================
+st.set_page_config(
+    page_title="CineMatch - Movie Recommender",
+    page_icon="🎬",
+    layout="wide"
 )
 
-num_recommendations = st.slider(
-    "📌 Number of Recommendations",
-    min_value=5,
-    max_value=20,
-    value=10,
-)
+# ==========================
+# CUSTOM CSS
+# ==========================
+st.markdown("""
+    <style>
+        body {
+            background-color: #0e1117;
+        }
+        .main-title {
+            font-size: 55px;
+            font-weight: bold;
+            color: #ff4b4b;
+            text-align: center;
+        }
+        .sub-title {
+            font-size: 20px;
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .movie-box {
+            background-color: #1c1f26;
+            padding: 15px;
+            border-radius: 15px;
+            margin: 10px;
+            text-align: center;
+            box-shadow: 0px 0px 10px rgba(255, 75, 75, 0.2);
+        }
+        .movie-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: gray;
+            font-size: 15px;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# =========================
-# BUTTON ACTION
-# =========================
+
+# ==========================
+# LOAD DATA
+# ==========================
+@st.cache_data
+def load_files():
+    df = pickle.load(open("df.pkl", "rb"))
+    indices = pickle.load(open("indices.pkl", "rb"))
+    tfidf_matrix = pickle.load(open("tfidf_matrix.pkl", "rb"))
+    return df, indices, tfidf_matrix
+
+
+df, indices, tfidf_matrix = load_files()
+
+
+# ==========================
+# RECOMMEND FUNCTION
+# ==========================
+def recommend_movies(title, num_recommendations=10):
+    try:
+        idx = indices[title]
+        cosine_similarities = linear_kernel(tfidf_matrix[idx], tfidf_matrix).flatten()
+        similar_indices = cosine_similarities.argsort()[-(num_recommendations+1):][::-1]
+        similar_indices = similar_indices[1:]
+        return df["title"].iloc[similar_indices].tolist()
+    except:
+        return []
+
+
+# ==========================
+# UI DESIGN
+# ==========================
+st.markdown("<div class='main-title'>🎬 CineMatch</div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-title'>Find movies similar to your favorite one using AI Recommendation System</div>", unsafe_allow_html=True)
+
+st.write("")
+
+col1, col2 = st.columns([3, 1])
+
+with col1:
+    selected_movie = st.selectbox("🎥 Select a Movie", df["title"].values)
+
+with col2:
+    num_movies = st.slider("⭐ Recommendations", 5, 20, 10)
+
+
 if st.button("🚀 Recommend Movies"):
+    recommendations = recommend_movies(selected_movie, num_movies)
 
-    recommendations = recommend_movies(
-        selected_movie,
-        num_recommendations,
-    )
+    if recommendations:
+        st.success(f"Top {num_movies} movies similar to **{selected_movie}**:")
 
-    if recommendations is None:
-        st.error("Movie not found in dataset.")
-
-    else:
-        st.success(f"Top {num_recommendations} movies similar to '{selected_movie}'")
-
-        for _, row in recommendations.iterrows():
-            st.markdown(
-                f"""
-                <div class="movie-card">
-                    <div class="movie-title">🎬 {row['title']}</div>
-                    <div class="movie-info">
-                        <b>Genre:</b> {row['genres']} <br>
-                        <b>⭐ Rating:</b> {row['vote_average']} <br>
-                        <b>🔥 Popularity:</b> {row['popularity']} <br>
-                        <b>📝 Tagline:</b> {row['tagline']}
+        cols = st.columns(5)
+        for i, movie in enumerate(recommendations):
+            with cols[i % 5]:
+                st.markdown(
+                    f"""
+                    <div class="movie-box">
+                        <div class="movie-name">{movie}</div>
                     </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+                    """,
+                    unsafe_allow_html=True
+                )
+    else:
+        st.error("❌ Movie not found! Please select another movie.")
 
-# =========================
+
+# ==========================
 # FOOTER
-# =========================
-st.markdown("---")
-st.markdown(
-    "<center>Made with ❤️ using Streamlit & Machine Learning</center>",
-    unsafe_allow_html=True,
-)
+# ==========================
+st.markdown("<div class='footer'>Made with ❤️ using Streamlit | CineMatch Movie Recommender</div>", unsafe_allow_html=True)
