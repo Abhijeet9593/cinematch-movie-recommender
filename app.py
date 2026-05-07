@@ -328,23 +328,35 @@ div[data-testid="stSlider"] { padding: 0 0.5rem; }
 @st.cache_data(show_spinner=False)
 def load_data():
     import gzip, os
-    # Supports df.pkl.gz (compressed, <25MB for GitHub) and df.pkl (uncompressed)
+    from scipy.sparse import load_npz
+
+    # Load df — supports df.pkl.gz (compressed) or df.pkl
     if os.path.exists("df.pkl.gz"):
         with gzip.open("df.pkl.gz", "rb") as f:
             df = pickle.load(f)
     else:
         with open("df.pkl", "rb") as f:
             df = pickle.load(f)
+
+    # Load indices
     with open("indices.pkl", "rb") as f:
         indices = pickle.load(f)
-    with open("tfidf_matrix.pkl", "rb") as f:
-        tfidf_matrix = pickle.load(f)
+
+    # Load tfidf_matrix — prefer .npz (version-safe) over .pkl
+    if os.path.exists("tfidf_matrix.npz"):
+        tfidf_matrix = load_npz("tfidf_matrix.npz")
+    else:
+        with open("tfidf_matrix.pkl", "rb") as f:
+            tfidf_matrix = pickle.load(f)
+
     return df, indices, tfidf_matrix
 
 
 @st.cache_data(show_spinner=False)
 def get_recommendations(title, _df, _indices, _tfidf_matrix, n=10):
-    idx = _indices[title]
+    # Handle duplicate titles — always use first occurrence
+    raw_idx = _indices[title]
+    idx = int(raw_idx.iloc[0]) if hasattr(raw_idx, "iloc") else int(raw_idx)
     sim_scores = cosine_similarity_sparse(_tfidf_matrix[idx], _tfidf_matrix)
     sim_scores_enum = list(enumerate(sim_scores))
     sim_scores_sorted = sorted(sim_scores_enum, key=lambda x: x[1], reverse=True)[1:n+1]
