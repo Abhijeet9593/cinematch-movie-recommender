@@ -15,9 +15,9 @@ CineMatch is a **content-based filtering** movie recommendation system that anal
 
 ---
 
-## 🚀 Live Demo
+## 🚀 Live Project Link
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app-name.streamlit.app)
+https://cinematch-movie-recommender-fbwuzhndnb93f9qjlnubuq.streamlit.app/
 
 ---
 
