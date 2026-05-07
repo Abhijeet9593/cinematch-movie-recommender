@@ -1,9 +1,14 @@
 import streamlit as st
 import pickle
 import pandas as pd
-from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 import warnings
 warnings.filterwarnings("ignore")
+
+def cosine_similarity_sparse(vec, matrix):
+    """Memory-efficient cosine similarity using sparse matrix dot product.
+    TF-IDF vectors are already L2-normalized, so dot product = cosine similarity."""
+    return (matrix * vec.T).toarray().flatten()
 
 # ─── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -340,7 +345,7 @@ def load_data():
 @st.cache_data(show_spinner=False)
 def get_recommendations(title, _df, _indices, _tfidf_matrix, n=10):
     idx = _indices[title]
-    sim_scores = cosine_similarity(_tfidf_matrix[idx], _tfidf_matrix).flatten()
+    sim_scores = cosine_similarity_sparse(_tfidf_matrix[idx], _tfidf_matrix)
     sim_scores_enum = list(enumerate(sim_scores))
     sim_scores_sorted = sorted(sim_scores_enum, key=lambda x: x[1], reverse=True)[1:n+1]
     movie_indices = [i[0] for i in sim_scores_sorted]
